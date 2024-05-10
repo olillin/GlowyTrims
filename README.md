@@ -17,7 +17,7 @@ Currently the pack only makes these 3 trims glow, see [coming soon](#coming-soon
 
 ## Known issues
 
-- Does not work with [Iris](https://modrinth.com/mod/iris)/[Oculus](https://modrinth.com/mod/oculus), even if no shader is selected. This is not an issue with the resource pack.
+- Does not work with [Iris](https://modrinth.com/mod/iris)/[Oculus](https://modrinth.com/mod/oculus), even if no shader is selected. [This is not an issue with the resource pack](https://github.com/Traben-0/Entity_Texture_Features/issues/255).
 
 ## Coming soon
 
