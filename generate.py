@@ -2,23 +2,27 @@ import os
 from pathlib import Path
 from PIL import Image
 import shutil
-from collections.abc import Iterable
 
-output_dir: str = 'output'
+RGBA = tuple[int, int, int, int]
+
+# Define directories
+output_dir = Path('output')
+
+palettes_dir = Path('input/color_palettes')
+item_textures_dir = Path('input/items')
+model_textures_dir = Path('input/models/armor')
+
 # Clean output directory
 if os.path.exists(output_dir):
     shutil.rmtree(output_dir)
 
-palette_paths: list[str] = [
-    "assets/biomesoplenty/textures/trims/color_palettes/glowworm_silk.png",
-    "assets/biomesoplenty/textures/trims/color_palettes/rose_quartz.png",
-]
 
-base_palette_path: str = "assets/minecraft/textures/trims/color_palettes/amethyst.png"
-texture_directories: list[str] = [
-    "assets/minecraft/textures/trims/items",
-    "assets/minecraft/textures/trims/models/armor",
+selected_palettes: list[str] = [
+    'amethyst',
+    'glowworm_silk',
+    'rose_quartz',
 ]
+base_palette: str = 'trim_palette'
 
 def create_dir(path: Path):
     if (path.exists()):
@@ -27,54 +31,41 @@ def create_dir(path: Path):
         create_dir(path.parent)
     path.mkdir()
 
-def find_good_enough(color: tuple[int, int, int, int], colors: Iterable[tuple[int, int, int, int]], tolerance: int = 2) -> tuple[int, int, int, int] | None:
-    for c in colors:
-        for i in range(4):
-            if abs(color[i]-c[i]) > tolerance:
-                break
-        else:
-            return c
-
-
-base_material = Path(base_palette_path).stem
-
-for palette_path in palette_paths:
+base_palette_path = palettes_dir.joinpath(base_palette + '.png')
+base_palette_img: Image.Image = Image.open(base_palette_path).convert('RGBA')
+for palette in selected_palettes:
     # Create color map
-    palette: Image.Image = Image.open(palette_path).convert('RGBA')
-    material: str = Path(palette_path).stem
+    palette_path = palettes_dir.joinpath(palette + '.png')
+    palette_img: Image.Image = Image.open(palette_path).convert('RGBA')
 
-    color_map = {}
-    base_palette: Image.Image = Image.open(base_palette_path)
-    for x in range(base_palette.width):
-        old_pixel = base_palette.getpixel((x, 0))
-        new_pixel = palette.getpixel((x, 0))
-        new_pixel = tuple([
-            new_pixel[0],
-            new_pixel[1],
-            new_pixel[2],
-            old_pixel[3]
-            ])
+    color_map: dict[RGBA, RGBA] = {}
+    for x in range(base_palette_img.width):
+        old_pixel: RGBA = RGBA(base_palette_img.getpixel((x, 0)))
+        new_pixel: RGBA = RGBA(palette_img.getpixel((x, 0)))
         color_map[old_pixel] = new_pixel
 
-    # Create new textures
-    for texture_dir in texture_directories:
-        for in_texture_name in os.listdir(texture_dir):
-            if base_material not in in_texture_name: continue
+    # Generate textures
+    def generate_textures(in_dir: Path, out_dir: Path):
+        for in_texture_name in os.listdir(in_dir):
+            in_texture_path = in_dir.joinpath(in_texture_name)
+            in_texture_img = Image.open(in_texture_path).convert('RGBA')
+            out_texture_img = Image.new('RGBA', in_texture_img.size)
 
-            in_texture_path = Path(texture_dir).joinpath(in_texture_name)
-            in_texture = Image.open(in_texture_path).convert('RGBA')
-            out_texture = Image.new('RGBA', in_texture.size)
+            for x in range(in_texture_img.width):
+                for y in range(in_texture_img.height):
+                    in_pixel: RGBA = RGBA(in_texture_img.getpixel((x, y)))
+                    if in_pixel == (0, 0, 0, 0): continue
+                    out_pixel: RGBA = RGBA(color_map[in_pixel])
+                    out_texture_img.putpixel((x, y), out_pixel)
 
-            for x in range(in_texture.width):
-                for y in range(in_texture.height):
-                    old_pixel = in_texture.getpixel((x, y))
-                    if old_pixel == (0,0,0,0): continue
-                    good_enough = find_good_enough(old_pixel, color_map.keys())
-                    if good_enough == None: continue
-                    new_pixel = color_map[good_enough]
-                    out_texture.putpixel((x, y), new_pixel)
-
-            out_texture_path = Path(output_dir).joinpath(str(in_texture_path).replace(base_material, material))
+            out_texture_path = Path(out_dir).joinpath(f'{in_texture_path.stem}_{palette}_e.png')
             create_dir(out_texture_path.parent)
-            out_texture.save(out_texture_path)
+            out_texture_img.save(out_texture_path)
             print(out_texture_path)
+
+    generate_textures(item_textures_dir, output_dir.joinpath('assets/minecraft/textures/trims/items'))
+    generate_textures(model_textures_dir, output_dir.joinpath('assets/minecraft/textures/trims/models/armor'))
+    # Copy palette texture
+    out_palettes_dir = output_dir.joinpath('assets/minecraft/textures/trims/color_palettes')
+    create_dir(out_palettes_dir)
+    palette_img.save(out_palettes_dir.joinpath(palette_path.name))
