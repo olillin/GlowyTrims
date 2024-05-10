@@ -1,6 +1,8 @@
 # GlowyTrims
 
-Makes some armor trims glow!
+![glowing armor trims in the dark](doc/trims.png)
+
+Makes some armor trims glow/emissive.
 
 Currently the pack only makes these 3 trims glow, see [coming soon](#coming-soon) for more info:
 
